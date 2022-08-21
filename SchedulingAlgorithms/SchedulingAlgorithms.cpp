@@ -25,8 +25,22 @@ public:
 	PCB(const PCB& pcb) : PCB(pcb.pid, pcb.arrival, pcb.burst, pcb.priority) {}
 };
 
-bool arrivalTimeComparator(PCB pcb1, PCB pcb2) {
+bool arrivalTimeComparator(const PCB& pcb1, const PCB& pcb2) {
 	return pcb1.arrival < pcb2.arrival;
+}
+
+bool arrivalAndBurstComparator(const PCB& pcb1, const PCB& pcb2) {
+	if (pcb1.arrival < pcb2.arrival) return true;
+	if (pcb2.arrival < pcb1.arrival) return false;
+
+	return pcb1.burst < pcb2.burst;
+}
+
+bool priorityComparator(const PCB& pcb1, const PCB& pcb2) {
+	if (pcb1.arrival < pcb2.arrival) return true;
+	if (pcb2.arrival < pcb1.arrival) return false;
+
+	return pcb1.priority < pcb2.priority;
 }
 
 class SolvedProc : public PCB {
@@ -44,30 +58,40 @@ public:
 	std::vector <SolvedProc> solutionTable;
 };
 
-
-Solution fcfs(std::vector<PCB>& pcbs) {
-	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
+Solution _nonPreemptive(std::vector<PCB>& sortedPcbs) {
 	auto solution = Solution();
 
 	int timeLapsed = 0;
 
-	for (int i = 0; i < pcbs.size();) {
-
-		const PCB pcb = pcbs[i];
+	for (int i = 0; i < sortedPcbs.size();) {
+		const PCB pcb = sortedPcbs[i];
 
 		if (pcb.arrival > timeLapsed) {
-			solution.ganttChart.push_back(GanttDescriptor(-1, timeLapsed, pcb.arrival));
+			solution.ganttChart.emplace_back(-1, timeLapsed, pcb.arrival);
 			timeLapsed = pcb.arrival;
 		}
-
 		else {
 			solution.ganttChart.emplace_back(pcb.pid, timeLapsed, timeLapsed + pcb.burst);
-			solution.solutionTable.push_back(SolvedProc(pcb, timeLapsed, timeLapsed + pcb.burst));
+			solution.solutionTable.emplace_back(pcb, timeLapsed, timeLapsed + pcb.burst);
 			timeLapsed += pcb.burst;
 			i++;
 		}
 	}
 	return solution;
+}
+Solution fcfs(std::vector<PCB>& pcbs) {
+	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
+	return _nonPreemptive(pcbs);
+}
+
+Solution sjf(std::vector<PCB>& pcbs) {
+	std::sort(pcbs.begin(), pcbs.end(), arrivalAndBurstComparator);
+	return _nonPreemptive(pcbs);
+}
+
+Solution hpf(std::vector<PCB>& pcbs) {
+	std::sort(pcbs.begin(), pcbs.end(), priorityComparator);
+	return _nonPreemptive(pcbs);
 }
 
 Solution rr(std::vector<PCB> pcbs, int quantam) {
@@ -143,7 +167,7 @@ void printTable(const std::vector<SolvedProc> procs) {
 int main() {
 	std::vector <PCB> pcbs = { PCB(1, 3, 10), PCB(2, 2, 1), PCB(3,4, 2), PCB(4, 10, 6), PCB(5, 6, 5), PCB(6, 28, 1) };
 	//{ {1, 0, 5}, {2, 1, 6 },{3, 2, 3}, {4, 3, 1}, {5, 4, 5}, {6, 6, 4} };
-	auto solution = rr(pcbs, 2);
+	auto solution = hpf(pcbs);
 
 	ganttPrinter(solution.ganttChart);
 	std::cout << "\n";
