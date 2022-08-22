@@ -25,24 +25,6 @@ public:
 	PCB(const PCB& pcb) : PCB(pcb.pid, pcb.arrival, pcb.burst, pcb.priority) {}
 };
 
-bool arrivalTimeComparator(const PCB& pcb1, const PCB& pcb2) {
-	return pcb1.arrival < pcb2.arrival;
-}
-
-bool arrivalAndBurstComparator(const PCB& pcb1, const PCB& pcb2) {
-	if (pcb1.arrival < pcb2.arrival) return true;
-	if (pcb2.arrival < pcb1.arrival) return false;
-
-	return pcb1.burst < pcb2.burst;
-}
-
-bool priorityComparator(const PCB& pcb1, const PCB& pcb2) {
-	if (pcb1.arrival < pcb2.arrival) return true;
-	if (pcb2.arrival < pcb1.arrival) return false;
-
-	return pcb1.priority < pcb2.priority;
-}
-
 class SolvedProc : public PCB {
 public:
 	int start;
@@ -58,13 +40,37 @@ public:
 	std::vector <SolvedProc> solutionTable;
 };
 
-Solution _nonPreemptive(std::vector<PCB>& sortedPcbs) {
-	auto solution = Solution();
+auto arrivalTimeComparator = [](const PCB& pcb1, const PCB& pcb2) {
+	return pcb1.arrival < pcb2.arrival;
+};
+
+auto arrivalAndBurstComparator = [](const PCB& pcb1, const PCB& pcb2) {
+	if (pcb1.arrival < pcb2.arrival) return true;
+	if (pcb2.arrival < pcb1.arrival) return false;
+
+	return pcb1.burst < pcb2.burst;
+};
+// assuming lower the number, higher the priority 
+// for some reason priority queue is accepting the the reverse of comparator required by std::sort
+// if the same comparator is used in std::sort it'll sort descending
+// using it in queue however gives elements in ascending order
+// TODO: Add explaination about it here. Leave it for now :skull:
+auto priorityComparator = [](const PCB& pcb1, const PCB& pcb2) {
+	
+	if (pcb1.priority > pcb2.priority) return true; 
+	if (pcb2.priority > pcb1.priority) return false; 
+
+	return pcb1.arrival > pcb2.arrival;
+};
+
+Solution fcfs(std::vector<PCB>& pcbs) {
+	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
+	Solution solution;
 
 	int timeLapsed = 0;
 
-	for (int i = 0; i < sortedPcbs.size();) {
-		const PCB pcb = sortedPcbs[i];
+	for (int i = 0; i < pcbs.size();) {
+		const PCB pcb = pcbs[i];
 
 		if (pcb.arrival > timeLapsed) {
 			solution.ganttChart.emplace_back(-1, timeLapsed, pcb.arrival);
@@ -79,37 +85,23 @@ Solution _nonPreemptive(std::vector<PCB>& sortedPcbs) {
 	}
 	return solution;
 }
-Solution fcfs(std::vector<PCB>& pcbs) {
-	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
-	return _nonPreemptive(pcbs);
-}
-
-Solution sjf(std::vector<PCB>& pcbs) {
-	std::sort(pcbs.begin(), pcbs.end(), arrivalAndBurstComparator);
-	return _nonPreemptive(pcbs);
-}
-
-Solution hpf(std::vector<PCB>& pcbs) {
-	std::sort(pcbs.begin(), pcbs.end(), priorityComparator);
-	return _nonPreemptive(pcbs);
-}
 
 Solution rr(std::vector<PCB> pcbs, int quantam) {
 	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
+
 	Solution solution;
 	std::queue<SolvedProc> readyQueue;
 	int i = 0, timeLapsed = 0;
 	while (i < pcbs.size() || !readyQueue.empty() || timeLapsed == 0) {
 		if (i < pcbs.size()) {
-			if (pcbs[i].arrival > timeLapsed && readyQueue.empty()) {
-				PCB& pcb = pcbs[i];
+			PCB& pcb = pcbs[i];
+			if (pcb.arrival > timeLapsed && readyQueue.empty()) {
 				solution.ganttChart.emplace_back(-1, timeLapsed, pcb.arrival);
 				readyQueue.emplace(pcb, pcb.arrival, -1);
 				timeLapsed = pcb.arrival;
 				i++;
 				continue;
 			}
-
 		}
 
 		if (!readyQueue.empty()) {
@@ -144,6 +136,55 @@ Solution rr(std::vector<PCB> pcbs, int quantam) {
 	return solution;
 }
 
+
+Solution hpf(std::vector<PCB>& pcbs) {
+	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
+
+	Solution solution;
+	std::priority_queue<SolvedProc, std::vector<SolvedProc>, decltype(priorityComparator)> readyQueue(priorityComparator);
+	int i = 0, timeLapsed = 0;
+
+	while (i < pcbs.size() || !readyQueue.empty() || timeLapsed == 0) {
+		if (i < pcbs.size()) {
+			PCB& pcb = pcbs[i];
+			if (pcb.arrival > timeLapsed && readyQueue.empty()) {
+				solution.ganttChart.emplace_back(-1, timeLapsed, pcb.arrival);
+				readyQueue.emplace(pcb, pcb.arrival, -1);
+				timeLapsed = pcb.arrival;
+				i++;
+				continue;
+			}
+		}
+
+		while (i < pcbs.size() && pcbs[i].arrival <= timeLapsed) {
+			readyQueue.emplace(pcbs[i++], -1, -1);
+		}
+
+		if (!readyQueue.empty()) {
+			auto& proc = readyQueue.top();
+			//if (proc.start == -1) {
+			//	proc.start = timeLapsed;
+			//}
+			solution.ganttChart.emplace_back(proc.pid, timeLapsed, timeLapsed + proc.burst);
+			SolvedProc solvedProc(proc);
+			solvedProc.start = timeLapsed;
+			solvedProc.end = timeLapsed + proc.burst;
+			solution.solutionTable.push_back(solvedProc);
+			timeLapsed += proc.burst;
+			readyQueue.pop();
+		}
+
+	}
+	return solution;
+}
+
+Solution sjf(std::vector<PCB>& pcbs) {
+	std::sort(pcbs.begin(), pcbs.end(), arrivalAndBurstComparator);
+
+	Solution solution;
+	return solution;
+}
+
 void ganttPrinter(const std::vector<GanttDescriptor>& chart) {
 	for (auto& desc : chart) {
 		if (desc.pid == -1) {
@@ -165,11 +206,26 @@ void printTable(const std::vector<SolvedProc> procs) {
 }
 
 int main() {
-	std::vector <PCB> pcbs = { PCB(1, 3, 10), PCB(2, 2, 1), PCB(3,4, 2), PCB(4, 10, 6), PCB(5, 6, 5), PCB(6, 28, 1) };
-	//{ {1, 0, 5}, {2, 1, 6 },{3, 2, 3}, {4, 3, 1}, {5, 4, 5}, {6, 6, 4} };
-	auto solution = hpf(pcbs);
+	//std::vector <PCB> pcbs
+	//{ {1, 3, 10, 5 }, { 2, 2, 1, 1}, { 3,4, 2,3 }, { 4, 10, 6, 4 }, { 5, 6, 5, 2 }, { 6, 28, 1, 0 } };
 
-	ganttPrinter(solution.ganttChart);
-	std::cout << "\n";
-	printTable(solution.solutionTable);
+	////{ {1, 0, 4, 2}, {2,1,2,4},{3, 2, 3, 6 }, {4,3, 5, 10},{5,4, 1, 8},{6, 5, 4, 12},{7, 6, 6, 9} };
+	////{ {1, 0, 3,2}, {2, 2, 5, 6}, {3, 1, 4, 3},{4, 4, 2, 5 }, {5, 6, 9, 7}, {6, 4, 5, 4 }, {7,10, 7, 10} };
+
+	////{ {1, 0, 4, 1}, {2, 0, 3,2}, {3, 6, 7, 1}, {4, 11, 4, 3}, {5, 12, 2, 2} };
+
+	////{ {1, 0, 5}, {2, 1, 6 },{3, 2, 3}, {4, 3, 1}, {5, 4, 5}, {6, 6, 4} };
+	//auto solution = hpf(pcbs);
+
+	//ganttPrinter(solution.ganttChart);
+	//std::cout << "\n";
+	//printTable(solution.solutionTable);
+	//
+	
+	//PCB pcb(1, 2, 5, 9);
+	//SolvedProc proc(pcb, 3, 8);
+
+	//SolvedProc proc1(proc);
+
+	//std::cout << proc1.pid << " " << proc1.arrival << " " << proc1.burst << " " << proc1.priority << " " << proc1.start << " " << proc1.end;
 }
