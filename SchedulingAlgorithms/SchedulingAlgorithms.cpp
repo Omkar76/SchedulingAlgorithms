@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iomanip>
 #include <queue>
+#include <functional>
 
 class GanttDescriptor {
 public:
@@ -50,6 +51,7 @@ auto arrivalAndBurstComparator = [](const PCB& pcb1, const PCB& pcb2) {
 
 	return pcb1.burst < pcb2.burst;
 };
+
 // assuming lower the number, higher the priority 
 // for some reason priority queue is accepting the the reverse of comparator required by std::sort
 // if the same comparator is used in std::sort it'll sort descending
@@ -59,6 +61,13 @@ auto priorityComparator = [](const PCB& pcb1, const PCB& pcb2) {
 	
 	if (pcb1.priority > pcb2.priority) return true; 
 	if (pcb2.priority > pcb1.priority) return false; 
+
+	return pcb1.arrival > pcb2.arrival;
+};
+
+auto shortestJobComparator = [](const PCB& pcb1, const PCB& pcb2) {
+	if (pcb1.burst > pcb2.burst) return true;
+	if (pcb2.burst > pcb1.burst) return false;
 
 	return pcb1.arrival > pcb2.arrival;
 };
@@ -137,11 +146,11 @@ Solution rr(std::vector<PCB> pcbs, int quantam) {
 }
 
 
-Solution hpf(std::vector<PCB>& pcbs) {
+Solution hpf(std::vector<PCB>& pcbs, std::function<bool(const PCB&, const PCB&)> comparator = priorityComparator) {
 	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
 
 	Solution solution;
-	std::priority_queue<SolvedProc, std::vector<SolvedProc>, decltype(priorityComparator)> readyQueue(priorityComparator);
+	std::priority_queue<SolvedProc, std::vector<SolvedProc>, decltype(comparator)> readyQueue(comparator);
 	int i = 0, timeLapsed = 0;
 
 	while (i < pcbs.size() || !readyQueue.empty() || timeLapsed == 0) {
@@ -180,9 +189,7 @@ Solution hpf(std::vector<PCB>& pcbs) {
 
 Solution sjf(std::vector<PCB>& pcbs) {
 	std::sort(pcbs.begin(), pcbs.end(), arrivalAndBurstComparator);
-
-	Solution solution;
-	return solution;
+	return hpf(pcbs, shortestJobComparator);
 }
 
 void ganttPrinter(const std::vector<GanttDescriptor>& chart) {
@@ -206,8 +213,8 @@ void printTable(const std::vector<SolvedProc> procs) {
 }
 
 int main() {
-	//std::vector <PCB> pcbs
-	//{ {1, 3, 10, 5 }, { 2, 2, 1, 1}, { 3,4, 2,3 }, { 4, 10, 6, 4 }, { 5, 6, 5, 2 }, { 6, 28, 1, 0 } };
+	std::vector <PCB> pcbs
+	{ {1, 3, 10, 5 }, { 2, 2, 1, 1}, { 3,4, 2,3 }, { 4, 10, 6, 4 }, { 5, 6, 5, 2 }, { 6, 28, 1, 0 } };
 
 	////{ {1, 0, 4, 2}, {2,1,2,4},{3, 2, 3, 6 }, {4,3, 5, 10},{5,4, 1, 8},{6, 5, 4, 12},{7, 6, 6, 9} };
 	////{ {1, 0, 3,2}, {2, 2, 5, 6}, {3, 1, 4, 3},{4, 4, 2, 5 }, {5, 6, 9, 7}, {6, 4, 5, 4 }, {7,10, 7, 10} };
@@ -215,12 +222,12 @@ int main() {
 	////{ {1, 0, 4, 1}, {2, 0, 3,2}, {3, 6, 7, 1}, {4, 11, 4, 3}, {5, 12, 2, 2} };
 
 	////{ {1, 0, 5}, {2, 1, 6 },{3, 2, 3}, {4, 3, 1}, {5, 4, 5}, {6, 6, 4} };
-	//auto solution = hpf(pcbs);
+	auto solution = sjf(pcbs);
 
-	//ganttPrinter(solution.ganttChart);
-	//std::cout << "\n";
-	//printTable(solution.solutionTable);
-	//
+	ganttPrinter(solution.ganttChart);
+	std::cout << "\n";
+	printTable(solution.solutionTable);
+	
 	
 	//PCB pcb(1, 2, 5, 9);
 	//SolvedProc proc(pcb, 3, 8);
