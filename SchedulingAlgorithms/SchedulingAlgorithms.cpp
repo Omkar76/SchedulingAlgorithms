@@ -186,9 +186,6 @@ Solution sjf(std::vector<PCB>& pcbs) {
 
 Solution preemptiveHpf(std::vector<PCB> pcbs, std::function<bool(const PCB&, const PCB&)> comparator = priorityComparator) {
 	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
-	//for (auto p : pcbs) {
-	//	std::cout << p.pid << " " << p.arrival << " " << p.burst << "\n";
-	//}
 	Solution solution;
 	std::priority_queue<SolvedProc, std::vector<SolvedProc>, decltype(comparator)> readyQueue(comparator);
 	int i = 0, timeLapsed = 0;
@@ -212,23 +209,22 @@ Solution preemptiveHpf(std::vector<PCB> pcbs, std::function<bool(const PCB&, con
 		}
 		
 		if (!readyQueue.empty()) {
-			//std::cout << timeLapsed << " ";
-			auto _proc = readyQueue.top();// is const ref, cant be modified
-			std::cout << _proc.pid << "-";
+			auto proc = readyQueue.top();   
+			// ^ don't use a ref! let cpp generate a copy
+			// problems were occuring when I kept a ref 
+			// to top of heap and then removed it from heap!
+			// kind of similar to having a pointer to memory 
+			// that was going to be freed.
+											
 			readyQueue.pop();
-			SolvedProc proc(_proc);		//create a mutable instance from it
-			std::cout << proc.pid << " ";						// all modifications to proc must be done before pushing it into queue!
-										// modifying after push has no effect on pushed value!!!!!!!!!!!
 
 			if (proc.start == -1) {
 				proc.start = timeLapsed;
 			}
 
-
 			int timeTillNextProcArrival = std::numeric_limits<int>::max();
 			if(i < pcbs.size()) {
 				timeTillNextProcArrival = pcbs[i].arrival - timeLapsed;
-				//std::cout << pcbs[i].pid << " " << timeTillNextProcArrival << " " << i << "\n";
 			}
 
 			int timeToFinish = proc.burst - proc.timeRan;
