@@ -66,6 +66,7 @@ auto priorityComparator = [](const PCB& pcb1, const PCB& pcb2) {
 	return pcb1.arrival > pcb2.arrival;
 };
 
+// to be used in priority_queue 
 auto shortestJobComparator = [](const PCB& pcb1, const PCB& pcb2) {
 	if (pcb1.burst > pcb2.burst) return true;
 	if (pcb2.burst > pcb1.burst) return false;
@@ -141,49 +142,6 @@ Solution sjf(std::vector<PCB>& pcbs) {
 	return hpf(pcbs, shortestJobComparator);
 }
 
-/*Solution _preemptiveHpf(std::vector<PCB> pcbs, std::function<bool(const PCB&, const PCB&)> comparator = priorityComparator){
-	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
-
-	Solution solution;
-	std::priority_queue<SolvedProc, std::vector<SolvedProc>, decltype(comparator)> readyQueue(comparator);
-	int i = 0, timeLapsed = 0;
-
-
-	while (i < pcbs.size() && !readyQueue.empty()) {
-		while(i < pcbs.size() && pcbs[i].arrival == timeLapsed) {
-			readyQueue.emplace(pcbs[i], -1, -1);
-			i++;
-		}
-		
-		if (readyQueue.empty()) {
-			timeLapsed++; continue;
-		}
-
-		auto _proc = readyQueue.top();
-		readyQueue.pop();
-
-		SolvedProc proc(_proc);
-
-		if (proc.start == -1) {
-			proc.start = timeLapsed;
-		}
-
-		proc.timeRan++;
-
-		if (proc.timeRan != proc.burst) {
-			readyQueue.push(proc);
-		}
-		else {
-			proc.end = timeLapsed;
-			solution.solutionTable.push_back(proc);
-		}
-		
-		timeLapsed++;
-	}
-	return solution;
-}
-*/
-
 Solution preemptiveHpf(std::vector<PCB> pcbs, std::function<bool(const PCB&, const PCB&)> comparator = priorityComparator) {
 	std::sort(pcbs.begin(), pcbs.end(), arrivalTimeComparator);
 	Solution solution;
@@ -210,11 +168,12 @@ Solution preemptiveHpf(std::vector<PCB> pcbs, std::function<bool(const PCB&, con
 		
 		if (!readyQueue.empty()) {
 			auto proc = readyQueue.top();   
-			// ^ don't use a ref! let cpp generate a copy
+			// ^ don't use a ref! ( Even if Visual studio keep giving 
+			// that suggestion :rage: ). let cpp generate a copy.
 			// problems were occuring when I kept a ref 
-			// to top of heap and then removed it from heap!
+			// to top of heap and then removed referred object from heap!
 			// kind of similar to having a pointer to memory 
-			// that was going to be freed.
+			// that was going to be freed. 
 											
 			readyQueue.pop();
 
@@ -246,6 +205,10 @@ Solution preemptiveHpf(std::vector<PCB> pcbs, std::function<bool(const PCB&, con
 		}
 	}
 	return solution;
+}
+
+Solution preemptiveSjf(std::vector<PCB> pcbs) {
+	return preemptiveHpf(pcbs, shortestJobComparator);
 }
 
 Solution rr(std::vector<PCB> pcbs, int quantam) {
@@ -328,7 +291,7 @@ int main() {
 	////{ {1, 0, 4, 1}, {2, 0, 3,2}, {3, 6, 7, 1}, {4, 11, 4, 3}, {5, 12, 2, 2} };
 
 	////{ {1, 0, 5}, {2, 1, 6 },{3, 2, 3}, {4, 3, 1}, {5, 4, 5}, {6, 6, 4} };
-	auto solution = preemptiveHpf(pcbs);
+	auto solution = preemptiveSjf(pcbs);
 
 	ganttPrinter(solution.ganttChart);
 	std::cout << "\n";
