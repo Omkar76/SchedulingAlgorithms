@@ -33,7 +33,6 @@ public:
 	int end;
 	int timeRan = 0;
 	SolvedProc(const PCB& pcb, int start, int end) : PCB(pcb), start(start), end(end) {}
-
 };
 
 class Solution {
@@ -138,7 +137,7 @@ Solution hpf(std::vector<PCB>& pcbs, std::function<bool(const PCB&, const PCB&)>
 }
 
 Solution sjf(std::vector<PCB>& pcbs) {
-	std::sort(pcbs.begin(), pcbs.end(), arrivalAndBurstComparator);
+	//std::sort(pcbs.begin(), pcbs.end(), arrivalAndBurstComparator);
 	return hpf(pcbs, shortestJobComparator);
 }
 
@@ -291,7 +290,7 @@ int main() {
 	////{ {1, 0, 4, 1}, {2, 0, 3,2}, {3, 6, 7, 1}, {4, 11, 4, 3}, {5, 12, 2, 2} };
 
 	////{ {1, 0, 5}, {2, 1, 6 },{3, 2, 3}, {4, 3, 1}, {5, 4, 5}, {6, 6, 4} };
-	auto solution = preemptiveSjf(pcbs);
+	auto solution = sjf(pcbs);
 
 	ganttPrinter(solution.ganttChart);
 	std::cout << "\n";
